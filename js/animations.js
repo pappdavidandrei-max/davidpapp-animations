@@ -133,7 +133,12 @@
     }
 
     window.addEventListener('load', refreshAfterLayoutSettles, { once: true });
-    window.addEventListener('pageshow', refreshAfterLayoutSettles);
+    // pageshow cu persisted=true înseamnă revenire din bfcache (iOS Safari).
+    // Refresh-ul pe bfcache cauzează scroll jump pe iPhone — îl ignorăm.
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted) return;
+      refreshAfterLayoutSettles();
+    });
 
     $$('img, video').forEach((media) => {
       const isImageLoaded = media.tagName.toLowerCase() === 'img' && media.complete;
