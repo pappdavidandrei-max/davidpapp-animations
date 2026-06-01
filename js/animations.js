@@ -70,6 +70,11 @@
     console.warn('[anim] ScrollTrigger nu este încărcat — scroll animations dezactivate');
   } else {
     gsap.registerPlugin(ScrollTrigger);
+    // Previne auto-refresh-ul intern al ScrollTrigger când bara iOS
+    // (address bar) schimbă înălțimea viewport-ului la scroll.
+    // Fără asta, GSAP se auto-refreshuiește la fiecare retragere a barei,
+    // cauzând freeze + snap la starea inițială a elementelor animate.
+    ScrollTrigger.config({ ignoreMobileResize: true });
   }
 
   const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2042,8 +2047,11 @@
   function initLenis() {
     if (REDUCED) return;                          // accesibilitate: fără smooth scroll
     if (typeof Lenis === 'undefined') return;     // CDN neîncărcat → scroll nativ
-    // Doar pe device-uri cu pointer fin (mouse). Pe touch (telefon, iPad,
-    // trackpad Magic Keyboard) lăsăm scroll-ul nativ — e mai bun și evită glitch.
+    // Doar pe device-uri fără touch (mouse pur). navigator.maxTouchPoints e 0
+    // pe desktop cu mouse și 5-10 pe orice iPhone/iPad/tabletă.
+    // iOS 13+ poate raporta (hover: hover) incorect, de aceea nu mai depindem
+    // doar de media query — combinăm cu un check hardware direct.
+    if (navigator.maxTouchPoints > 0) return;
     if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
     const lenis = new Lenis({
