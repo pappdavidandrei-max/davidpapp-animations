@@ -146,7 +146,14 @@
     });
 
     let resizeRaf;
+    let lastResizeWidth = window.innerWidth;
     window.addEventListener('resize', () => {
+      const currentWidth = window.innerWidth;
+      // Pe mobil, bara browser-ului retrasă declanșează resize doar pe înălțime.
+      // Ignorăm aceste resize-uri ca să evităm ScrollTrigger.refresh() care
+      // cauzează jump de scroll și reveal brusc al navbar-ului.
+      if (currentWidth === lastResizeWidth && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+      lastResizeWidth = currentWidth;
       if (resizeRaf) cancelAnimationFrame(resizeRaf);
       resizeRaf = requestAnimationFrame(refreshAfterLayoutSettles);
     });
