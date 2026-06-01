@@ -552,7 +552,12 @@
       const image = el.querySelector('img');
       gsap.set(el, { autoAlpha: 0, y: 24, scale: 0.994, transformOrigin: 'center center', overwrite: 'auto' });
       if (image) gsap.set(image, { scale: 1.02, transformOrigin: 'center center', overwrite: 'auto' });
-      observeEnterOnce(el, () => {
+      // Trigger pe părintele elementului, nu pe el însuși. Pe iPhone,
+      // imaginile lazy au dimensiuni 0 la DOMContentLoaded — observeEnterOnce
+      // cu el ca trigger nu se declanșa niciodată (r.bottom === 0).
+      // Părintele are dimensiuni reale din layout (padding, grid).
+      const trigger = el.parentElement || el;
+      observeEnterOnce(trigger, () => {
         const tl = gsap.timeline({ defaults: { ease: PREMIUM_EASE, overwrite: 'auto' } });
         tl.to(el, { autoAlpha: 1, y: 0, scale: 1, duration: 1.2 }, 0);
         if (image) tl.to(image, { scale: 1, duration: 1.5 }, 0.03);
@@ -638,7 +643,12 @@
     });
 
     if (uikitBlocks.length) {
-      observeEnterOnce(uikitBlocks[0], () => {
+      // Trigger pe containerul secțiunii, nu pe primul block de imagine.
+      // Pe iPhone, imaginile lazy au dimensiuni 0 la DOMContentLoaded —
+      // uikitBlocks[0].getBoundingClientRect().bottom === 0 → observeEnterOnce
+      // nu se declanșa niciodată, lăsând toate imaginile la autoAlpha: 0.
+      const uikitTrigger = uikitBlocks[0].closest('.section_uikit') || uikitBlocks[0];
+      observeEnterOnce(uikitTrigger, () => {
         const tl = gsap.timeline({ defaults: { ease: PREMIUM_EASE, overwrite: 'auto' } });
         tl.to(uikitBlocks, {
           autoAlpha: 1,
@@ -1289,6 +1299,8 @@
 
       if (window.matchMedia('(hover: hover)').matches) {
         cards.forEach((card) => {
+          const img = card.querySelector('img');
+
           card.addEventListener('mouseenter', () => {
             gsap.to(card, {
               scale: 1.01,
@@ -1296,6 +1308,14 @@
               ease: EASE,
               overwrite: 'auto',
             });
+            if (img) {
+              gsap.to(img, {
+                scale: 1.06,
+                duration: 1.1,
+                ease: 'power2.out',
+                overwrite: 'auto',
+              });
+            }
           });
 
           card.addEventListener('mouseleave', () => {
@@ -1305,6 +1325,14 @@
               ease: EASE,
               overwrite: 'auto',
             });
+            if (img) {
+              gsap.to(img, {
+                scale: 1,
+                duration: 0.9,
+                ease: 'power2.out',
+                overwrite: 'auto',
+              });
+            }
           });
         });
       }
