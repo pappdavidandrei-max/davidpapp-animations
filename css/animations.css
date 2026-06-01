@@ -1,0 +1,584 @@
+/* ============================================================
+   davidpapp.ro — CSS suport pentru animations.js
+   ------------------------------------------------------------
+   Minimalist. Singurul lucru critic: spotlight pe expert.
+   FOUC pe restul: lăsăm GSAP.set() să se ocupe (rulează
+   instant la DOMContentLoaded, înainte ca utilizatorul să
+   vadă pagina).
+============================================================ */
+
+/* ============================================================
+   LENIS SMOOTH SCROLL — CSS oficial.
+   CRITIC: Webflow pune `html, body { overflow-x: hidden }` care
+   în browsere moderne devine `overflow: clip` și RUPE scroll-ul
+   Lenis (se oprește la jumătate). Anulăm overflow-x de pe <html>
+   și-l mutăm pe body. Clipping-ul orizontal pe body e suficient.
+============================================================ */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+/* ============================================================
+   OVERFLOW — strategie UNICĂ (Lenis + sticky + no horizontal scroll)
+   ------------------------------------------------------------
+   Webflow pune inline `html, body { overflow-x: hidden }`. Pe <html>,
+   `overflow-x: hidden` devine `overflow: clip` pe AMBELE axe și:
+     1. rupe scroll-ul Lenis (se oprea la jumătate)
+     2. ar bloca position:sticky pe descendenți
+   Soluția: `overflow-x: clip` (ascunde orizontal CA hidden, dar NU
+   creează scroll container → Lenis merge până jos ȘI sticky merge).
+   `overflow-y: visible` explicit ca scroll-ul vertical să fie pe viewport.
+============================================================ */
+html,
+body {
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+
+.main-wrapper,
+.page-wrapper {
+  overflow: visible !important;
+}
+
+/* ---------- NAVBAR INTRO PRE-STATE ----------
+   Ascunde itemele din desktop nav până le preia GSAP. Evită flash-ul
+   în care Proiecte / Servicii / Despre mine apar înainte de animație.
+*/
+.w-mod-js .navbar14_container-desktop .nav-logo-full,
+.w-mod-js .navbar14_container-desktop .navbar14_link,
+.w-mod-js .navbar14_container-desktop .button-purple {
+  opacity: 0;
+  transform: translateY(-32px);
+}
+
+/* ---------- SPOTLIGHT (Apple Vision Pro / Linear style) ----------
+   Glow mov urmărește cursorul prin CSS vars --mx/--my setate de JS.
+*/
+/* Glow-ul cursor: pe .spotlight-glow (expert_card interior) ca să nu fie
+   acoperit de cardul opac. Cascada de intrare e separat, pe [data-anim="spotlight"]. */
+.spotlight-glow {
+  position: relative;
+  overflow: hidden;
+  --mx: 50%;
+  --my: 50%;
+}
+
+.spotlight-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    600px circle at var(--mx) var(--my),
+    rgba(158, 71, 209, 0.20),
+    rgba(158, 71, 209, 0.05) 30%,
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.spotlight-glow:hover::before {
+  opacity: 1;
+}
+
+.spotlight-glow > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* ============================================================
+   TIMELINE TITLE MASK — bara mov sticky urcă deasupra titlului
+   "Drumul meu până aici". Punem un background solid alb cu
+   z-index mai mare ca să o acopere când vine prin spate.
+============================================================ */
+.timeline10_component .max-width-large.align-center.z-index-1 {
+  position: relative;
+  z-index: 10;
+  background: var(--alb, #fff);
+  padding-bottom: 1.5rem;
+}
+
+/* Pe touch (mobile/tablete fără hover real), spotlight stă aprins subtil */
+@media (hover: none) {
+  .spotlight-glow::before {
+    opacity: 0.15;
+  }
+}
+
+/* ---------- HERO 100vh ---------- */
+[data-anim-scope="hero"] {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+}
+
+.header_component {
+  position: relative;
+}
+
+/* ---------- FIX doturi care dispar (GPU compositing + mask-image) ----------
+   Când GSAP promovează carduri/CTA pe GPU (will-change/transform), Chrome
+   uneori nu re-randă mask-image-ul doturilor → dispar până la un reflow
+   (ex: deschiderea DevTools). Forțăm doturile pe propriul layer de
+   compositing ca să fie randate consistent. */
+.dots-overlay,
+.dots-overlay-cta {
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+.hero-spidey-trigger {
+  display: inline-block;
+  cursor: pointer;
+  font-weight: 500;
+  font-variation-settings: "wght" 500;
+  transform-origin: center center;
+  transition:
+    color 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    font-variation-settings 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-spidey-trigger.is-spidey-active {
+  color: #e53935;
+  font-weight: 700;
+  font-variation-settings: "wght" 700;
+  transform: translateY(-1px) scale(1.04);
+}
+
+/* Ancoră de poziționare: header_component devine referința egg-ului */
+[data-anim-scope="hero"] .header_component {
+  position: relative;
+}
+
+.hero-spidey-easter-egg {
+  position: absolute;
+  top: 0;
+  left: 80%;
+  aspect-ratio: 516 / 2658;
+  width: clamp(6.5rem, 8.2vw, 8.75rem);
+  z-index: 12;
+  pointer-events: none;
+  transform-origin: top center;
+  will-change: transform, opacity;
+}
+
+.hero-spidey-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 516 / 2658;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 3px 6px rgba(9, 18, 30, 0.08))
+    drop-shadow(0 10px 18px rgba(9, 18, 30, 0.06))
+    drop-shadow(0 20px 34px rgba(9, 18, 30, 0.04));
+}
+
+@media (max-width: 767px) {
+  [data-anim-scope="hero"] {
+    min-height: auto;
+    padding-top: 6rem;
+    padding-bottom: 4rem;
+  }
+
+  .hero-spidey-easter-egg {
+    top: 0;
+    left: 72%;
+    width: clamp(5.25rem, 16vw, 6.75rem);
+  }
+}
+
+/* ---------- FIX integrare image overflow ---------- */
+.integrare_image-wrapper {
+  overflow: hidden;
+}
+
+.integrare_image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ---------- FIX portfolio image clipping ---------- */
+.portfolio1_item-link,
+.portfolio1_image-wrapper {
+  display: block;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.portfolio1_image-wrapper {
+  isolation: isolate;
+  border-radius: 1rem;
+}
+
+.portfolio1_image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 1rem;
+  transform-origin: center center;
+}
+
+@media (hover: hover) {
+  .portfolio1_image-wrapper {
+    cursor: none;
+  }
+
+  .navbar14_link .text-size-regular {
+    position: relative;
+    display: inline-block;
+    transition: color 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+
+  .navbar14_link .text-size-regular::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: currentColor;
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .navbar14_link:hover .text-size-regular {
+    color: #9E47D1;
+  }
+
+  .navbar14_link:hover .text-size-regular::after {
+    clip-path: inset(0 0 0 0);
+  }
+
+  .footer4_link {
+    position: relative;
+    display: inline-block;
+    transition: color 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+
+  .footer4_link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: currentColor;
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .footer4_link:hover {
+    color: #9E47D1;
+  }
+
+  .footer4_link:hover::after {
+    clip-path: inset(0 0 0 0);
+  }
+
+  .portfolio1_title-wrapper .button.is-link.is-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    transition: color 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .portfolio1_title-wrapper .button.is-link.is-icon .icon-embed-xxsmall {
+    color: currentColor;
+    transition: color 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .portfolio1_title-wrapper .button.is-link.is-icon > div:first-child {
+    position: relative;
+    display: inline-block;
+  }
+
+  .portfolio1_title-wrapper .button.is-link.is-icon > div:first-child::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 2px;
+    background: currentColor;
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .portfolio1_title-wrapper .button.is-link.is-icon:hover {
+    color: #956CE6;
+  }
+
+  .portfolio1_title-wrapper .button.is-link.is-icon:hover > div:first-child::after {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.portfolio-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.portfolio-cursor svg {
+  display: block;
+  overflow: visible;
+  filter:
+    drop-shadow(0 3px 6px rgba(7, 12, 22, 0.08))
+    drop-shadow(0 10px 18px rgba(7, 12, 22, 0.06))
+    drop-shadow(0 20px 32px rgba(7, 12, 22, 0.035));
+}
+
+/* ---------- CASE STUDY: SPLIT HERO TITLE ----------
+   Pre-state: ține titlul invizibil până SplitText preia controlul
+   (evită flash-ul cu textul vizibil înainte de wrap în linii).
+*/
+[data-anim="split-hero-title"] {
+  visibility: hidden;
+}
+
+/* ---------- CASE STUDY: HERO IMAGE ZOOM ---------- */
+[data-anim-zoom="hero"] {
+  transform-origin: center center;
+  will-change: transform;
+}
+
+/* ---------- CASE STUDY: HERO BLOCK REVEAL + STAGGER ----------
+   Pre-state: ține elementele invizibile DINAINTE ca JS-ul să ruleze.
+   Asta previne FOUC (element apare → JS rulează → element dispare →
+   se animează). Identic cu pattern-ul deja folosit pentru navbar.
+   `.w-mod-js` se adaugă de Webflow inline pe <html> imediat ce JS
+   pornește, deci stilurile se aplică doar când JS-ul e prezent.
+*/
+.w-mod-js [data-anim="block-reveal"],
+.w-mod-js [data-anim="block-stagger"] {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+.w-mod-js [data-anim="block-reveal"] {
+  transform: translateY(30px);
+}
+
+/* ---------- CASE STUDY: TILT CARD (hover 3D pe imagini cu chenar) ---- */
+[data-anim="tilt-card"] {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  will-change: transform;
+}
+
+/* Pre-state DOAR pe wrapperele pe care JS-ul le animă.
+   .layout141_image-wrapper are data-anim="fade-up-mockup" (gestionat de initFadeUpMockup).
+   .layout141_project-shadow* fără fade-up-mockup sunt animate de initVisualAssetReveals.
+   NU ascunde project-shadow care e copil al unui image-wrapper (ar ascunde imaginea permanent). */
+.w-mod-js .main-wrapper .layout141_project-shadow-desktop,
+.w-mod-js .main-wrapper .layout141_project-shadow-mobile,
+.w-mod-js .main-wrapper .rezultat_component {
+  opacity: 0;
+}
+
+/* ---------- CASE STUDY: FADE UP MOCKUP / TITLE / TEXT / LIST ----------
+   Pre-state pentru cele 4 patterns de fade-up. Țintim ELEMENTUL exact,
+   nu copiii lui. Pentru fade-up-list ascundem doar <li>-urile.
+*/
+.w-mod-js [data-anim="fade-up-mockup"],
+.w-mod-js [data-anim="fade-up-title"],
+.w-mod-js [data-anim="fade-up-text"] {
+  opacity: 0;
+}
+.w-mod-js [data-anim="fade-up-list"] > li {
+  opacity: 0;
+}
+
+/* ---------- CASE STUDY: FADE UP TAG / QUOTE / CARDS / IMAGES ----------
+   Pre-state pentru noile pattern-uri narrative (Misfit).
+*/
+.w-mod-js [data-anim="fade-up-tag"],
+.w-mod-js [data-anim="fade-up-quote"] {
+  opacity: 0;
+}
+.w-mod-js [data-anim="stagger-cards"] > *,
+.w-mod-js [data-anim="cascade-images"] > * {
+  opacity: 0;
+}
+
+/* ---------- CASE STUDY: FADE LEFT LIST (Clinify "Ecranele principale") ----------
+   Items intră din stânga (x:-24 → 0). Divider-ele își întind line-ul de
+   la stânga la dreapta (scaleX 0 → 1).
+*/
+.w-mod-js [data-anim="fade-left-list"] > .layout141_regular-text {
+  opacity: 0;
+}
+.w-mod-js [data-anim="fade-left-list"] > .divider-horizontal {
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+/* ---------- FIX: shadow tăiat pe mockup-uri device ----------
+   Webflow CSS pune overflow:hidden pe .layout141_image-wrapper, ceea ce
+   taie box-shadow-ul cardului .layout141_project-shadow* care iese în
+   afara wrapperului. Forțăm overflow:visible pe TOATE wrapperele și pe
+   wrapperele de mai sus care l-ar putea tăia (component, padding-section).
+*/
+.layout141_image-wrapper {
+  overflow: visible !important;
+}
+.layout141_component {
+  overflow: visible !important;
+}
+
+
+/* split-title — ascuns până SplitText îl procesează (anti-FOUC) */
+.w-mod-js [data-anim="split-title"] {
+  visibility: hidden;
+}
+
+/* ---------- ELIMINARE BORDER/GRADIENT (cerut de user) ----------
+   Userul a scos border-ul/chenarul de pe imaginile case studies și
+   gradientul alb de pe cardurile hero. Le anulăm complet aici. */
+.hero-card_item-border {
+  background: none !important;
+  border: none !important;
+}
+.layout141-project-border,
+.layout141_image-wrapper-border {
+  border: none !important;
+  background: none !important;
+  padding: 0 !important;
+}
+
+/* ---------- Reduced motion respect ---------- */
+@media (prefers-reduced-motion: reduce) {
+  [data-anim],
+  .main-wrapper .layout141_image-wrapper,
+  .main-wrapper .layout141_project-shadow,
+  .main-wrapper .layout141_project-shadow-desktop,
+  .main-wrapper .layout141_project-shadow-mobile,
+  .main-wrapper .rezultat_component {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+
+/* ============================================================
+   LIVE DOT — punct verde cu 3 valuri concentrice (AirDrop style)
+   pentru "Open to full-time roles" pe homepage.
+   3 inele cresc lent și dispar, foarte subtil — efect "live" liniștit.
+   Implementat în CSS pur (keyframes) — fără overhead JS.
+============================================================ */
+
+/* Wrapperul total — keep its layout space dat de Webflow.
+   Inelele cresc DOAR în afara punctului, fără să mărească wrapperul. */
+.live-dot {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Inelele se extind în afara wrapperului — overflow vizibil */
+  overflow: visible !important;
+}
+
+/* Punctul verde (SVG) — încadrat în limitele inelelor.
+   Pozițional ABSOLUT, centrat perfect prin transform.
+   Wrapperul Webflow are display: inline-flex care poate cauza
+   off-center pe SVG-uri cu padding intrinsec. Soluția: absolute + centrat. */
+.live-dot svg {
+  width: 50%;
+  height: 50%;
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+/* Cele 3 inele concentrice — toate cu același animation,
+   dar delay-uri diferite ca să producă efectul stratificat */
+.live-dot__ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* Pornesc cu dimensiunea punctului (50% din wrapper) */
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  background: transparent;
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  /* Animație MULT mai lentă: 4.5s cycle, subtilă */
+  animation: live-dot-wave 4.5s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+/* Cu 3 inele și 4.5s cycle, decalajul e 1.5s — efect liniștit */
+.live-dot__ring:nth-child(1) {
+  animation-delay: 0s;
+}
+.live-dot__ring:nth-child(2) {
+  animation-delay: 1.5s;
+}
+.live-dot__ring:nth-child(3) {
+  animation-delay: 3s;
+}
+
+@keyframes live-dot-wave {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+    border-width: 1px;
+  }
+  50% {
+    opacity: 0.22;
+  }
+  100% {
+    /* Scale 1.9 = inelul exterior la 50% × 1.9 = 95% din wrapper.
+       Stă încadrat în spațiul logic al punctului, nu se extinde dramatic. */
+    transform: translate(-50%, -50%) scale(1.9);
+    opacity: 0;
+    border-width: 0.5px;
+  }
+}
+
+/* Pe reduced motion: oprim animația și ascundem inelele */
+@media (prefers-reduced-motion: reduce) {
+  .live-dot__ring {
+    animation: none;
+    opacity: 0;
+  }
+}
