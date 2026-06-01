@@ -83,6 +83,9 @@
 
   const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const IS_DESKTOP = window.matchMedia('(min-width: 1024px)').matches;
+  const IS_TOUCH_DEVICE =
+    navigator.maxTouchPoints > 0 ||
+    !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
   /* ---------- Helpers ---------- */
   const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
@@ -120,13 +123,11 @@
     // Touch = telefon/tabletă fără mouse. Pe iOS Safari, ScrollTrigger.refresh()
     // apelat în timp ce userul scrollează activ cauzează freeze vizual + snap la
     // starea inițială a elementelor animate (par că "intră din nou de sus").
-    const isTouchDevice = !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-
     // Pe touch: tracking scroll activ — refresh-urile se amână până după scroll.
     let scrollActive = false;
     let pendingRefresh = false;
     let scrollEndTimer = null;
-    if (isTouchDevice) {
+    if (IS_TOUCH_DEVICE) {
       window.addEventListener('scroll', () => {
         scrollActive = true;
         clearTimeout(scrollEndTimer);
@@ -144,7 +145,7 @@
     const refresh = () => {
       // Pe touch: dacă userul scrollează, amânăm refresh-ul.
       // Refresh în scroll activ pe iOS cauzează freeze + jump vizibil.
-      if (scrollActive && isTouchDevice) {
+      if (scrollActive && IS_TOUCH_DEVICE) {
         pendingRefresh = true;
         return;
       }
@@ -161,7 +162,7 @@
       // Pe touch nu facem cascade de refresh-uri — un singur refresh per eveniment.
       // Cascade-ul (250/750/1500ms) pe mobil înseamnă refresh garantat în mijlocul
       // unei sesiuni de scroll, tocmai sursa principală de freeze pe iPhone.
-      if (isTouchDevice) return;
+      if (IS_TOUCH_DEVICE) return;
 
       settledTimeouts.forEach(clearTimeout);
       settledTimeouts = [250, 750, 1500].map((delay) =>
@@ -187,7 +188,7 @@
     // window.load de mai sus acoperă toate imaginile inițiale.
     // Imaginile lazy care se încarcă la scroll ar declanșa refresh()
     // în plină sesiune de scroll — exact ce cauzează freeze + jump pe iPhone.
-    if (!isTouchDevice) {
+    if (!IS_TOUCH_DEVICE) {
       $$('img, video').forEach((media) => {
         const isImageLoaded = media.tagName.toLowerCase() === 'img' && media.complete;
         const isVideoReady = media.tagName.toLowerCase() === 'video' && media.readyState >= 1;
@@ -206,7 +207,7 @@
       // Pe mobil, bara browser-ului retrasă declanșează resize doar pe înălțime.
       // Ignorăm aceste resize-uri ca să evităm ScrollTrigger.refresh() care
       // cauzează jump de scroll și reveal brusc al navbar-ului.
-      if (currentWidth === lastResizeWidth && isTouchDevice) return;
+      if (currentWidth === lastResizeWidth && IS_TOUCH_DEVICE) return;
       lastResizeWidth = currentWidth;
       if (resizeRaf) cancelAnimationFrame(resizeRaf);
       resizeRaf = requestAnimationFrame(refreshAfterLayoutSettles);
@@ -297,13 +298,18 @@
       observer.observe(el);
     }
 
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
+    const hasIntersectionObserver = 'IntersectionObserver' in window;
+    if (!hasIntersectionObserver || !IS_TOUCH_DEVICE) {
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll);
+    }
     setTimeout(check, 250);
     setTimeout(check, 1000);
-    watcher = { check };
-    addEnterWatcher(watcher);
-    if ('IntersectionObserver' in window) return;
+    if (!hasIntersectionObserver || !IS_TOUCH_DEVICE) {
+      watcher = { check };
+      addEnterWatcher(watcher);
+    }
+    if (hasIntersectionObserver) return;
 
     if (typeof ScrollTrigger !== 'undefined') {
       ScrollTrigger.create({
@@ -2049,8 +2055,10 @@
          Respectă prefers-reduced-motion (nu pornește deloc).
   ============================================================ */
   function initLenis() {
-    if (REDUCED) return null;
-    if (typeof Lenis === 'undefined') return null;
+    if (REDUCED || typeof Lenis === 'undefined') {
+      window.lenis = null;
+      return null;
+    }
 
     // Lenis pornește DOAR pe desktop cu mouse real.
     // Triple guard: hardware (maxTouchPoints), pointer, lățime minimă.
