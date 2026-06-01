@@ -128,10 +128,17 @@ body {
 /* ---------- HERO 100vh ---------- */
 [data-anim-scope="hero"] {
   position: relative;
-  min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   overflow: visible;
+}
+
+/* 100vh + centrat DOAR pe desktop */
+@media (min-width: 992px) {
+  [data-anim-scope="hero"] {
+    min-height: 100vh;
+    align-items: center;
+  }
 }
 
 .header_component {
