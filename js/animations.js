@@ -70,11 +70,15 @@
     console.warn('[anim] ScrollTrigger nu este încărcat — scroll animations dezactivate');
   } else {
     gsap.registerPlugin(ScrollTrigger);
-    // Previne auto-refresh-ul intern al ScrollTrigger când bara iOS
-    // (address bar) schimbă înălțimea viewport-ului la scroll.
-    // Fără asta, GSAP se auto-refreshuiește la fiecare retragere a barei,
-    // cauzând freeze + snap la starea inițială a elementelor animate.
-    ScrollTrigger.config({ ignoreMobileResize: true });
+    // Scoatem 'resize' din evenimentele GSAP interne — fără asta, GSAP
+    // se auto-refreshuiește la ORICE resize, inclusiv bara iOS (height-only).
+    // Resize-ul e gestionat manual în setupScrollTriggerRefreshGuards, unde
+    // filtrăm explicit height-only pe touch. ignoreMobileResize e un backup
+    // pentru versiuni GSAP mai noi care suportă opțiunea.
+    ScrollTrigger.config({
+      ignoreMobileResize: true,
+      autoRefreshEvents: 'visibilitychange,DOMContentLoaded,load',
+    });
   }
 
   const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -132,7 +136,7 @@
             pendingRefresh = false;
             requestAnimationFrame(() => ScrollTrigger.refresh());
           }
-        }, 150);
+        }, 250);
       }, { passive: true });
     }
 
@@ -306,7 +310,7 @@
         trigger: el,
         start: `top ${thresholdRatio * 100}%`,
         once: true,
-        invalidateOnRefresh: true,
+        invalidateOnRefresh: false,
         onEnter: play,
       });
     }
@@ -1414,7 +1418,7 @@
         overwrite: 'auto',
         scrollTrigger: {
           trigger: el, start: 'top 92%', once: true,
-          invalidateOnRefresh: true,
+          invalidateOnRefresh: false,
         },
       });
     });
@@ -1444,7 +1448,7 @@
         scrollTrigger: {
           trigger: el,
           start: isTestimonial ? 'top 80%' : 'top 92%',
-          once: true, invalidateOnRefresh: true,
+          once: true, invalidateOnRefresh: false,
         },
       });
     });
@@ -1494,7 +1498,7 @@
                 trigger: el,
                 start: 'top 85%',
                 once: true,
-                invalidateOnRefresh: true,
+                invalidateOnRefresh: false,
               },
             });
           },
@@ -2045,33 +2049,38 @@
          Respectă prefers-reduced-motion (nu pornește deloc).
   ============================================================ */
   function initLenis() {
-    if (REDUCED) return;                          // accesibilitate: fără smooth scroll
-    if (typeof Lenis === 'undefined') return;     // CDN neîncărcat → scroll nativ
-    // Doar pe device-uri fără touch (mouse pur). navigator.maxTouchPoints e 0
-    // pe desktop cu mouse și 5-10 pe orice iPhone/iPad/tabletă.
-    // iOS 13+ poate raporta (hover: hover) incorect, de aceea nu mai depindem
-    // doar de media query — combinăm cu un check hardware direct.
-    if (navigator.maxTouchPoints > 0) return;
-    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (REDUCED) return null;
+    if (typeof Lenis === 'undefined') return null;
+
+    // Lenis pornește DOAR pe desktop cu mouse real.
+    // Triple guard: hardware (maxTouchPoints), pointer, lățime minimă.
+    // navigator.maxTouchPoints = 0 exclusiv pe desktop fără touchscreen.
+    const canUseLenis = navigator.maxTouchPoints === 0
+      && window.matchMedia('(hover: hover) and (pointer: fine) and (min-width: 992px)').matches;
+
+    if (!canUseLenis) {
+      window.lenis = null; // diagnostic clar în console: window.lenis === null pe mobile
+      return null;
+    }
 
     const lenis = new Lenis({
-      duration: 1.1,                              // inerție subtilă (nu exagerat)
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // expoOut — coerent cu animațiile
       smoothWheel: true,
+      syncTouch: false,
+      anchors: true,
+      stopInertiaOnNavigate: true,
       wheelMultiplier: 1,
-      touchMultiplier: 1.5,
+      touchMultiplier: 1,
     });
 
-    // Sincronizare cu GSAP: Lenis avansează pe ticker-ul GSAP (un singur RAF loop)
     if (typeof ScrollTrigger !== 'undefined') {
       lenis.on('scroll', ScrollTrigger.update);
     }
     gsap.ticker.add((time) => {
-      lenis.raf(time * 1000); // gsap.ticker e în secunde, Lenis vrea ms
+      lenis.raf(time * 1000);
     });
     gsap.ticker.lagSmoothing(0);
 
-    window.lenis = lenis; // expus pentru debugging/control extern
+    window.lenis = lenis;
     return lenis;
   }
 
