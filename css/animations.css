@@ -202,8 +202,6 @@ body {
 @media (max-width: 767px) {
   [data-anim-scope="hero"] {
     min-height: auto;
-    padding-top: 6rem;
-    padding-bottom: 4rem;
   }
 
   .hero-spidey-easter-egg {
