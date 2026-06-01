@@ -1299,8 +1299,6 @@
 
       if (window.matchMedia('(hover: hover)').matches) {
         cards.forEach((card) => {
-          const img = card.querySelector('img');
-
           card.addEventListener('mouseenter', () => {
             gsap.to(card, {
               scale: 1.01,
@@ -1308,14 +1306,6 @@
               ease: EASE,
               overwrite: 'auto',
             });
-            if (img) {
-              gsap.to(img, {
-                scale: 1.06,
-                duration: 1.1,
-                ease: 'power2.out',
-                overwrite: 'auto',
-              });
-            }
           });
 
           card.addEventListener('mouseleave', () => {
@@ -1325,14 +1315,6 @@
               ease: EASE,
               overwrite: 'auto',
             });
-            if (img) {
-              gsap.to(img, {
-                scale: 1,
-                duration: 0.9,
-                ease: 'power2.out',
-                overwrite: 'auto',
-              });
-            }
           });
         });
       }
