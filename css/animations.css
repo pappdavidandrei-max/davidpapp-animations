@@ -270,7 +270,7 @@ body {
   }
 
   .navbar14_link:hover .text-size-regular {
-    color: #9E47D1;
+    color: #A75FFE;
   }
 
   .navbar14_link:hover .text-size-regular::after {
@@ -297,7 +297,7 @@ body {
   }
 
   .footer4_link:hover {
-    color: #9E47D1;
+    color: #A75FFE;
   }
 
   .footer4_link:hover::after {
