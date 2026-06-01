@@ -108,8 +108,37 @@
   const setupScrollTriggerRefreshGuards = () => {
     if (typeof ScrollTrigger === 'undefined') return;
 
+    // Touch = telefon/tabletă fără mouse. Pe iOS Safari, ScrollTrigger.refresh()
+    // apelat în timp ce userul scrollează activ cauzează freeze vizual + snap la
+    // starea inițială a elementelor animate (par că "intră din nou de sus").
+    const isTouchDevice = !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+    // Pe touch: tracking scroll activ — refresh-urile se amână până după scroll.
+    let scrollActive = false;
+    let pendingRefresh = false;
+    let scrollEndTimer = null;
+    if (isTouchDevice) {
+      window.addEventListener('scroll', () => {
+        scrollActive = true;
+        clearTimeout(scrollEndTimer);
+        scrollEndTimer = setTimeout(() => {
+          scrollActive = false;
+          if (pendingRefresh) {
+            pendingRefresh = false;
+            requestAnimationFrame(() => ScrollTrigger.refresh());
+          }
+        }, 150);
+      }, { passive: true });
+    }
+
     let refreshRaf;
     const refresh = () => {
+      // Pe touch: dacă userul scrollează, amânăm refresh-ul.
+      // Refresh în scroll activ pe iOS cauzează freeze + jump vizibil.
+      if (scrollActive && isTouchDevice) {
+        pendingRefresh = true;
+        return;
+      }
       if (refreshRaf) cancelAnimationFrame(refreshRaf);
       refreshRaf = requestAnimationFrame(() => {
         ScrollTrigger.refresh();
@@ -119,6 +148,11 @@
     let settledTimeouts = [];
     const refreshAfterLayoutSettles = () => {
       refresh();
+
+      // Pe touch nu facem cascade de refresh-uri — un singur refresh per eveniment.
+      // Cascade-ul (250/750/1500ms) pe mobil înseamnă refresh garantat în mijlocul
+      // unei sesiuni de scroll, tocmai sursa principală de freeze pe iPhone.
+      if (isTouchDevice) return;
 
       settledTimeouts.forEach(clearTimeout);
       settledTimeouts = [250, 750, 1500].map((delay) =>
@@ -140,15 +174,21 @@
       refreshAfterLayoutSettles();
     });
 
-    $$('img, video').forEach((media) => {
-      const isImageLoaded = media.tagName.toLowerCase() === 'img' && media.complete;
-      const isVideoReady = media.tagName.toLowerCase() === 'video' && media.readyState >= 1;
-      if (isImageLoaded || isVideoReady) return;
+    // Pe touch: NU ascultăm load-ul individual al imaginilor.
+    // window.load de mai sus acoperă toate imaginile inițiale.
+    // Imaginile lazy care se încarcă la scroll ar declanșa refresh()
+    // în plină sesiune de scroll — exact ce cauzează freeze + jump pe iPhone.
+    if (!isTouchDevice) {
+      $$('img, video').forEach((media) => {
+        const isImageLoaded = media.tagName.toLowerCase() === 'img' && media.complete;
+        const isVideoReady = media.tagName.toLowerCase() === 'video' && media.readyState >= 1;
+        if (isImageLoaded || isVideoReady) return;
 
-      media.addEventListener('load', refreshAfterLayoutSettles, { once: true });
-      media.addEventListener('loadedmetadata', refreshAfterLayoutSettles, { once: true });
-      media.addEventListener('error', refreshAfterLayoutSettles, { once: true });
-    });
+        media.addEventListener('load', refreshAfterLayoutSettles, { once: true });
+        media.addEventListener('loadedmetadata', refreshAfterLayoutSettles, { once: true });
+        media.addEventListener('error', refreshAfterLayoutSettles, { once: true });
+      });
+    }
 
     let resizeRaf;
     let lastResizeWidth = window.innerWidth;
@@ -157,7 +197,7 @@
       // Pe mobil, bara browser-ului retrasă declanșează resize doar pe înălțime.
       // Ignorăm aceste resize-uri ca să evităm ScrollTrigger.refresh() care
       // cauzează jump de scroll și reveal brusc al navbar-ului.
-      if (currentWidth === lastResizeWidth && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+      if (currentWidth === lastResizeWidth && isTouchDevice) return;
       lastResizeWidth = currentWidth;
       if (resizeRaf) cancelAnimationFrame(resizeRaf);
       resizeRaf = requestAnimationFrame(refreshAfterLayoutSettles);
