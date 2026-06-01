@@ -1725,6 +1725,9 @@
 
       if (REDUCED) return;
       if (typeof ScrollTrigger === 'undefined') return;
+      // Cardul de rezultat (case studies) are data-anim="spotlight" pentru glow,
+      // dar animația e gestionată de initResultReveal() — nu dublăm.
+      if (card.closest('.section_rezultat')) return;
 
       // Cascadă cerută: titlu secțiune → carduri → titlurile cardurilor → conținut.
       // Titlul "La ce mă pricep cel mai bine?" (h3 din expert_card-content)
