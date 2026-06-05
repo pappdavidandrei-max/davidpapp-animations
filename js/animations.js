@@ -1336,7 +1336,10 @@
     };
 
     if (introTl) {
-      introTl.eventCallback('onComplete', setup);
+  introTl.eventCallback('onComplete', () => {
+    setup();
+    window.dispatchEvent(new Event('siteReady'));
+  });
     } else {
       setup();
     }
